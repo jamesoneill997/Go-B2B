@@ -32,7 +32,7 @@ func (t *Arith) Divide(args *Args, quo *Quotient) error {
 	return nil
 }
 
-func main() {
+func StartServer() {
 	arith := new(Arith)
 	rpc.Register(arith)
 	rpc.HandleHTTP()
