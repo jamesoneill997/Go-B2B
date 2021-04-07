@@ -48,10 +48,7 @@ func readCustomers() []Customer {
 	file, _ := ioutil.ReadFile("data/customers.json")
 	data := []Customer{}
 
-	err := json.Unmarshal([]byte(file), &data)
-	if err != nil {
-		log.Fatal(err)
-	}
+	_ = json.Unmarshal([]byte(file), &data)
 
 	return data
 }
