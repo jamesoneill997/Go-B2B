@@ -14,12 +14,17 @@ func StartClient() {
 		log.Fatal("dialing: ", err)
 	}
 	// Synchronous call
-	args := &server.Args{7, 8}
-	var reply int
-	err = client.Call("Arith.Multiply", args, &reply)
-	if err != nil {
-		log.Fatal("arith error:", err)
+	args := &server.Customer{
+		ID:       1,
+		Password: "password",
 	}
-	fmt.Printf("Arith: %d*%d=%d\n", args.A, args.B, reply)
+
+	var reply string
+	err = client.Call("Customer.CreateCustomer", args, &reply)
+
+	if err != nil {
+		log.Fatal("Error:", err)
+	}
+	fmt.Printf("Customer created, id: %d\n", args.ID)
 
 }
