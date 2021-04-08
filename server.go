@@ -1,4 +1,4 @@
-package server
+package main
 
 import (
 	"encoding/json"
@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/rpc"
 	"time"
+
+	"github.com/jamesoneill997/Go-B2B/structs"
 )
 
 //Customer struct stores customer info
@@ -53,8 +55,10 @@ func readCustomers() []Customer {
 	return data
 }
 
-func (cust *Customer) CreateCustomer(customerDetails *Customer, response *string) error {
+func (cust *Customer) CreateCustomer(customerDetails *structs.Customer, response *string) error {
 	customers := readCustomers()
+	customerDetails.ID = generateID()
+
 	customers = append(customers, *customerDetails)
 
 	jsonCustomers, err := json.Marshal(customers)
@@ -71,6 +75,11 @@ func (cust *Customer) CreateCustomer(customerDetails *Customer, response *string
 	return nil
 }
 
+/*generates unique ID for user*/
+func generateID() int {
+	return len(readCustomers()) + 1
+}
+
 func (t *Arith) Multiply(args *Args, reply *int) error {
 	*reply = args.A * args.B
 	return nil
@@ -85,7 +94,7 @@ func (t *Arith) Divide(args *Args, quo *Quotient) error {
 	return nil
 }
 
-func StartServer() {
+func main() {
 	customer := new(Customer)
 	rpc.Register(customer)
 	rpc.HandleHTTP()
@@ -93,5 +102,8 @@ func StartServer() {
 	if e != nil {
 		log.Fatal("listen error:", e)
 	}
-	go http.Serve(l, nil)
+	for {
+		http.Serve(l, nil)
+
+	}
 }

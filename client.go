@@ -1,21 +1,20 @@
-package client
+package main
 
 import (
 	"fmt"
 	"log"
 	"net/rpc"
 
-	"github.com/jamesoneill997/Go-B2B/server"
+	"github.com/jamesoneill997/Go-B2B/structs"
 )
 
-func StartClient() {
+func main() {
 	client, err := rpc.DialHTTP("tcp", "localhost:1234")
 	if err != nil {
 		log.Fatal("dialing: ", err)
 	}
 	// Synchronous call
-	args := &server.Customer{
-		ID:       1,
+	args := &structs.Customer{
 		Password: "password",
 	}
 
