@@ -2,15 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"net/rpc"
 	"time"
-
-	"github.com/jamesoneill997/Go-B2B/structs"
 )
 
 //Customer struct stores customer info
@@ -36,15 +34,9 @@ type Product struct {
 	RestockQuantity int       `json: restockQuantity`
 }
 
-type Args struct {
-	A, B int
+type Response struct {
+	Message string
 }
-
-type Quotient struct {
-	Quo, Rem int
-}
-
-type Arith int
 
 func readCustomers() []Customer {
 	file, _ := ioutil.ReadFile("data/customers.json")
@@ -55,7 +47,9 @@ func readCustomers() []Customer {
 	return data
 }
 
-func (cust *Customer) CreateCustomer(customerDetails *structs.Customer, response *string) error {
+func (cust *Customer) CreateCustomer(customerDetails *Customer, response *string) error {
+	fmt.Println("Create customer request received.")
+
 	customers := readCustomers()
 	customerDetails.ID = generateID()
 
@@ -72,26 +66,20 @@ func (cust *Customer) CreateCustomer(customerDetails *structs.Customer, response
 		return err
 	}
 
+	*response = "Account created successfully!"
+	fmt.Printf("Customer %d created successfully\n", customerDetails.ID)
 	return nil
 }
+
+/*Login takes customer login details and returns whether login has been successful*/
+// func (cust *Customer) Login(customerDetails *Customer, response *string) error {
+// 	registeredCustomers := readCustomers()
+
+// }
 
 /*generates unique ID for user*/
 func generateID() int {
 	return len(readCustomers()) + 1
-}
-
-func (t *Arith) Multiply(args *Args, reply *int) error {
-	*reply = args.A * args.B
-	return nil
-}
-
-func (t *Arith) Divide(args *Args, quo *Quotient) error {
-	if args.B == 0 {
-		return errors.New("divide by zero")
-	}
-	quo.Quo = args.A / args.B
-	quo.Rem = args.A % args.B
-	return nil
 }
 
 func main() {
