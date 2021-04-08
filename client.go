@@ -9,14 +9,15 @@ import (
 )
 
 func main() {
-	var userHasAccount string
+	var (
+		userHasAccount string
+		reply          string
+		customer       structs.Customer
+	)
+
 	client, err := rpc.DialHTTP("tcp", "localhost:1234")
 	if err != nil {
 		log.Fatal("dialing: ", err)
-	}
-	// Synchronous call
-	args := &structs.Customer{
-		Password: "password",
 	}
 
 	fmt.Print("Welcome to B2B-CLI, Do you already have an account? (y/n): ")
@@ -24,14 +25,26 @@ func main() {
 
 	if userHasAccount == "y" {
 		fmt.Println("Welcome back!")
-		//login prompt
+		fmt.Print("Please enter your ID: ")
+		fmt.Scanf("%d", &customer.ID)
+
+		fmt.Print("Please enter your Password: ")
+		fmt.Scanf("%s", &customer.Password)
+
+		err := client.Call("Customer.Login", customer, &reply)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
 	} else {
 		fmt.Println("Nice to meet you!")
-		//create account prompt
+		fmt.Print("Please enter the password that you would like to use: ")
+		fmt.Scanf("%s", &customer.Password)
+
+		err = client.Call("Customer.CreateCustomer", customer, &reply)
 	}
 
-	var reply string
-	err = client.Call("Customer.CreateCustomer", args, &reply)
 	fmt.Println(reply)
 
 	if err != nil {

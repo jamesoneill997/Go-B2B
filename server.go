@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -66,16 +67,39 @@ func (cust *Customer) CreateCustomer(customerDetails *Customer, response *string
 		return err
 	}
 
-	*response = "Account created successfully!"
+	*response = fmt.Sprintf("Account created successfully! Your customer ID is %d", customerDetails.ID)
 	fmt.Printf("Customer %d created successfully\n", customerDetails.ID)
 	return nil
 }
 
 /*Login takes customer login details and returns whether login has been successful*/
-// func (cust *Customer) Login(customerDetails *Customer, response *string) error {
-// 	registeredCustomers := readCustomers()
+func (cust *Customer) Login(customerDetails *Customer, response *string) error {
+	registeredCustomers := readCustomers()
+	enteredID := customerDetails.ID
+	enteredPassword := customerDetails.Password
 
-// }
+	for _, cust := range registeredCustomers {
+		if enteredID == cust.ID {
+			if err := checkPassword(enteredPassword, cust.Password); err != nil {
+				*response = "Invalid Credentials"
+				return err
+			}
+
+			*response = "Login successful"
+			return nil
+		}
+	}
+
+	*response = "Customer not found."
+	return errors.New(*response)
+}
+
+func checkPassword(enteredPassword string, correctPassword string) error {
+	if enteredPassword == correctPassword {
+		return nil
+	}
+	return errors.New("Invalid credentials")
+}
 
 /*generates unique ID for user*/
 func generateID() int {
