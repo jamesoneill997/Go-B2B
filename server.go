@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"sync"
 	"time"
 )
 
@@ -28,27 +29,22 @@ type Order struct {
 
 //Product struct stores product info
 type Product struct {
-	ID              int       `json: id`
-	Name            string    `json: name`
-	Quantity        int       `json: quantity`
-	RestockDate     time.Time `json: restockDate`
-	RestockQuantity int       `json: restockQuantity`
+	ID              int    `json: id`
+	Name            string `json: name`
+	Quantity        int    `json: quantity`
+	RestockDate     int    `json: restockDate`
+	RestockQuantity int    `json: restockQuantity`
 }
 
 type Response struct {
 	Message string
 }
 
-func readCustomers() []Customer {
-	file, _ := ioutil.ReadFile("data/customers.json")
-	data := []Customer{}
-
-	_ = json.Unmarshal([]byte(file), &data)
-
-	return data
-}
+var mu sync.Mutex
 
 func (cust *Customer) CreateCustomer(customerDetails *Customer, response *string) error {
+	mu.Lock()
+	defer mu.Unlock()
 	fmt.Println("Create customer request received.")
 
 	customers := readCustomers()
@@ -94,6 +90,9 @@ func (cust *Customer) Login(customerDetails *Customer, response *string) error {
 	return errors.New(*response)
 }
 
+/*				Unexported Helper functions				*/
+
+//checks a users password
 func checkPassword(enteredPassword string, correctPassword string) error {
 	if enteredPassword == correctPassword {
 		return nil
@@ -106,6 +105,34 @@ func generateID() int {
 	return len(readCustomers()) + 1
 }
 
+//gets list of all current customers
+func readCustomers() []Customer {
+	file, _ := ioutil.ReadFile("data/customers.json")
+	data := []Customer{}
+	_ = json.Unmarshal([]byte(file), &data)
+
+	return data
+}
+
+//gets list of all current orders
+func readOrders() []Order {
+	file, _ := ioutil.ReadFile("data/orders.json")
+	data := []Order{}
+	_ = json.Unmarshal([]byte(file), &data)
+
+	return data
+}
+
+//gets list of all current products
+func readProducts() []Product {
+	file, _ := ioutil.ReadFile("data/products.json")
+	data := []Product{}
+	_ = json.Unmarshal([]byte(file), &data)
+
+	return data
+}
+
+/*							Main 							*/
 func main() {
 	customer := new(Customer)
 	rpc.Register(customer)

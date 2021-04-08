@@ -6,6 +6,7 @@ import (
 	"net/rpc"
 
 	"github.com/jamesoneill997/Go-B2B/structs"
+	"github.com/urfave/cli"
 )
 
 func main() {
@@ -46,6 +47,71 @@ func main() {
 	}
 
 	fmt.Println(reply)
+	app := cli.NewApp()
+	app.Name = "B2B-CLI"
+	app.Usage = "A B2B ordering system created in Go!"
+
+	orderFlags := []cli.Flag{
+		cli.StringFlag{
+			Name:  "product",
+			Usage: "Specify desired Product",
+		},
+		cli.StringFlag{
+			Name:  "date",
+			Usage: "Specify date of order (format = dd/mm/yyyy)",
+		},
+		cli.StringFlag{
+			Name:  "time",
+			Usage: "Specify time of order (24hr format = 14:30)",
+		},
+	}
+
+	credFlags := []cli.Flag{
+		cli.StringFlag{
+			Name:  "id",
+			Usage: "Customer ID",
+		},
+		cli.StringFlag{
+			Name:  "password",
+			Usage: "Customer password",
+		},
+	}
+
+	app.Commands = []cli.Command{
+		{
+			Name:  "logout",
+			Usage: "Ends current session",
+		},
+
+		{
+			Name:  "login",
+			Usage: "Ends current session",
+			Flags: credFlags,
+		},
+		{
+			Name:  "order",
+			Usage: "order a specified product",
+			Flags: orderFlags,
+		},
+		{
+			Name:  "listproducts",
+			Usage: "List all available products",
+		},
+		{
+			Name:  "availability",
+			Usage: "List all availability, optional flags allow product and date specification",
+			Flags: orderFlags,
+		},
+		{
+			Name:  "listorders",
+			Usage: "List all orders for current user",
+		},
+		{
+			Name:  "cancelorder",
+			Usage: "Cancel order given an ID, run without flags will cancel all orders for current user",
+			Flags: orderFlags,
+		},
+	}
 
 	if err != nil {
 		log.Fatal("Error:", err)

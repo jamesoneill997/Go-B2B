@@ -1,0 +1,30 @@
+[
+    {
+        "id" : 1,
+        "name" : "Game Boy",
+        "quantity" : 500,
+        "restockDate" : 1,
+        "restockQuantity" : 200
+    },
+    {
+        "id" : 2,
+        "name" : "Apples",
+        "quantity" : 900,
+        "restockDate" : 12,
+        "restockQuantity" : 600
+    },
+    {
+        "id" : 3,
+        "name" : "Oranges",
+        "quantity" : 600,
+        "restockDate" : 4,
+        "restockQuantity" : 300
+    },
+    {
+        "id" : 4,
+        "name" : "Jolt Cola",
+        "quantity" : 200,
+        "restockDate" : 19,
+        "restockQuantity" : 100
+    }
+]
