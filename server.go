@@ -68,6 +68,21 @@ func (cust *Customer) CreateCustomer(customerDetails *Customer, response *string
 	return nil
 }
 
+func (cust *Customer) ListProducts(customerDetails *Customer, response *string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	products, err := json.Marshal(readProducts())
+	for p := range products {
+
+		fmt.Println(p)
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 /*Login takes customer login details and returns whether login has been successful*/
 func (cust *Customer) Login(customerDetails *Customer, response *string) error {
 	registeredCustomers := readCustomers()
@@ -90,6 +105,35 @@ func (cust *Customer) Login(customerDetails *Customer, response *string) error {
 	return errors.New(*response)
 }
 
+func (cust *Customer) MakeOrder(orderDetails *Order, response *string) error {
+	mu.Lock()
+	defer mu.Unlock()
+	order := Order{}
+	order.ID = generateID()
+	order.CustomerID = cust.ID
+
+	fmt.Println("Order request received.")
+
+	orders := readOrders()
+	orders = append(orders, *orderDetails)
+
+	jsonCustomers, err := json.Marshal(orders)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile("data/orders.json", jsonCustomers, 0644)
+
+	if err != nil {
+		return err
+	}
+
+	*response = fmt.Sprintf("Order successfully! Your Order ID is %d", orderDetails.ID)
+	fmt.Printf("Order %d created successfully\n", orderDetails.ID)
+	return nil
+
+}
+
 /*				Unexported Helper functions				*/
 
 //checks a users password
@@ -107,6 +151,7 @@ func generateID() int {
 
 //gets list of all current customers
 func readCustomers() []Customer {
+
 	file, _ := ioutil.ReadFile("data/customers.json")
 	data := []Customer{}
 	_ = json.Unmarshal([]byte(file), &data)
@@ -116,6 +161,7 @@ func readCustomers() []Customer {
 
 //gets list of all current orders
 func readOrders() []Order {
+
 	file, _ := ioutil.ReadFile("data/orders.json")
 	data := []Order{}
 	_ = json.Unmarshal([]byte(file), &data)
@@ -125,6 +171,7 @@ func readOrders() []Order {
 
 //gets list of all current products
 func readProducts() []Product {
+
 	file, _ := ioutil.ReadFile("data/products.json")
 	data := []Product{}
 	_ = json.Unmarshal([]byte(file), &data)

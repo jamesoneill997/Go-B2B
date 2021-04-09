@@ -14,6 +14,8 @@ func main() {
 		userHasAccount string
 		reply          string
 		customer       structs.Customer
+		cmd            string
+		cmdArr         []string
 	)
 
 	client, err := rpc.DialHTTP("tcp", "localhost:1234")
@@ -81,21 +83,30 @@ func main() {
 		{
 			Name:  "logout",
 			Usage: "Ends current session",
+			Action: func(c *cli.Context) error {
+				log.Fatal("Goodbye!")
+				return err
+			},
 		},
 
 		{
 			Name:  "login",
-			Usage: "Ends current session",
+			Usage: "Prompts user login.",
 			Flags: credFlags,
 		},
 		{
 			Name:  "order",
-			Usage: "order a specified product",
+			Usage: "Order a specified product",
 			Flags: orderFlags,
 		},
 		{
 			Name:  "listproducts",
 			Usage: "List all available products",
+			Action: func(c *cli.Context) error {
+				err := client.Call("Customer.ListProducts", customer, &reply)
+				fmt.Println(&reply)
+				return err
+			},
 		},
 		{
 			Name:  "availability",
@@ -115,6 +126,19 @@ func main() {
 
 	if err != nil {
 		log.Fatal("Error:", err)
+	}
+
+	//CLI
+	app.Run([]string{"help"})
+
+	for {
+		fmt.Print(">> ")
+		fmt.Scanf("%s", &cmd)
+		cmdArr = append(cmdArr, cmd)
+		err := app.Run(cmdArr)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 }
