@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/rpc"
 
@@ -9,7 +10,9 @@ import (
 
 func runClient(custs <-chan structs.Customer, results chan<- string) {
 	var (
-		reply string
+		// reply    string
+		products []structs.Product
+		// commands = []string{"ListProducts"}
 	)
 
 	for cust := range custs {
@@ -20,14 +23,22 @@ func runClient(custs <-chan structs.Customer, results chan<- string) {
 			log.Fatal("dialing: ", err)
 		}
 
-		err = client.Call("Customer.CreateCustomer", cust, &reply)
+		// err = client.Call("Customer.CreateCustomer", cust, &reply)
+		err = client.Call("Customer.ListProducts", cust, &products)
+
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		fmt.Println(products)
 		results <- "Done"
 	}
+
 }
 
 func main() {
 	maxRoutines := 15
-	numJobs := 100
+	numJobs := 10
 	jobs := make(chan structs.Customer, numJobs)
 	results := make(chan string, numJobs)
 
@@ -52,6 +63,7 @@ func main() {
 		jobs <- cust
 	}
 
+	//TODO refactor to use sync.WaitGroup
 	for a := 1; a < numJobs; a++ {
 		<-results
 	}

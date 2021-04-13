@@ -68,20 +68,28 @@ func (cust *Customer) CreateCustomer(customerDetails *Customer, response *string
 	return nil
 }
 
-func (cust *Customer) ListProducts(customerDetails *Customer, response *string) error {
+func (cust *Customer) ListProducts(customerDetails *Customer, response *[]Product) error {
 	mu.Lock()
 	defer mu.Unlock()
+	var listings []Product
 
 	products, err := json.Marshal(readProducts())
-	for p := range products {
-
-		fmt.Println(p)
-	}
 	if err != nil {
 		return err
 	}
+
+	if err := json.Unmarshal([]byte(products), &listings); err != nil {
+		return err
+	}
+
+	*response = listings
+
 	return nil
 }
+
+// func prettifyProduct(json []byte) string {
+
+// }
 
 /*Login takes customer login details and returns whether login has been successful*/
 func (cust *Customer) Login(customerDetails *Customer, response *string) error {
