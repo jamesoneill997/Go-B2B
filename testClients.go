@@ -3,19 +3,24 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"net/rpc"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/jamesoneill997/Go-B2B/structs"
 )
 
 func runClient(custs <-chan structs.Customer, results chan<- string) {
 	var (
-		// reply    string
-		products []structs.Product
+		reply string
+		// products []structs.Product
 		// commands = []string{"ListProducts"}
 	)
 
 	for cust := range custs {
+		time.Sleep(time.Duration(numberGenerator(100, 3000)) * time.Millisecond)
 		cust.Password = "password"
 
 		client, err := rpc.DialHTTP("tcp", "localhost:1234")
@@ -23,17 +28,58 @@ func runClient(custs <-chan structs.Customer, results chan<- string) {
 			log.Fatal("dialing: ", err)
 		}
 
-		// err = client.Call("Customer.CreateCustomer", cust, &reply)
-		err = client.Call("Customer.ListProducts", cust, &products)
+		err = client.Call("Customer.CreateCustomer", cust, &reply)
+
+		//extract id
+		id, err := strconv.Atoi(strings.Fields(reply)[len(strings.Fields(reply))-1])
+		cust.ID = id
+
+		fmt.Println(reply)
+
+		order := structs.Order{
+			ProductID:  numberGenerator(1, 4),
+			Quantity:   numberGenerator(1, 3),
+			CustomerID: cust.ID,
+			Date:       dateGenerator(),
+		}
+
+		err = client.Call("Customer.MakeOrder", order, &reply)
+		fmt.Println(reply)
 
 		if err != nil {
 			fmt.Println(err)
 		}
 
-		fmt.Println(products)
 		results <- "Done"
 	}
 
+}
+
+func numberGenerator(min int, max int) int {
+	rand.Seed(time.Now().UnixNano())
+	return (rand.Intn(max-min+1) + min)
+}
+
+func dateGenerator() structs.Date {
+	d := strconv.Itoa(numberGenerator(1, 28))
+	m := strconv.Itoa(numberGenerator(5, 12))
+	dInt, _ := strconv.Atoi(d)
+	mInt, _ := strconv.Atoi(m)
+
+	if dInt < 10 {
+		d = fmt.Sprintf("0%s", d)
+	}
+
+	if mInt < 10 {
+		m = fmt.Sprintf("0%s", m)
+	}
+
+	date := structs.Date{
+		D: d,
+		M: m,
+		Y: "2021",
+	}
+	return date
 }
 
 func main() {

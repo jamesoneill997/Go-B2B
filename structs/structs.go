@@ -13,3 +13,19 @@ type Product struct {
 	RestockDate     int    `json: restockDate`
 	RestockQuantity int    `json: restockQuantity`
 }
+
+//Order struct stores order info
+type Order struct {
+	ID         int  `json: id`
+	ProductID  int  `json: productID`
+	Quantity   int  `json: quantity`
+	CustomerID int  `json: customerID`
+	Date       Date `json: date`
+}
+
+//Date struct is used to store dates for orders
+type Date struct {
+	D string `json: d`
+	M string `json: m`
+	Y string `json: y`
+}

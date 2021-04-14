@@ -9,8 +9,9 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"sort"
+	"strconv"
 	"sync"
-	"time"
 )
 
 //Customer struct stores customer info
@@ -21,10 +22,11 @@ type Customer struct {
 
 //Order struct stores order info
 type Order struct {
-	ID         int       `json: id`
-	ProductID  int       `json: productID`
-	CustomerID int       `json: customerID`
-	Date       time.Time `json: date`
+	ID         int  `json: id`
+	ProductID  int  `json: productID`
+	Quantity   int  `json: quantity`
+	CustomerID int  `json: customerID`
+	Date       Date `json: date`
 }
 
 //Product struct stores product info
@@ -34,6 +36,13 @@ type Product struct {
 	Quantity        int    `json: quantity`
 	RestockDate     int    `json: restockDate`
 	RestockQuantity int    `json: restockQuantity`
+}
+
+//Date struct is used to store dates for orders
+type Date struct {
+	D string `json: d`
+	M string `json: m`
+	Y string `json: y`
 }
 
 type Response struct {
@@ -116,24 +125,29 @@ func (cust *Customer) Login(customerDetails *Customer, response *string) error {
 func (cust *Customer) MakeOrder(orderDetails *Order, response *string) error {
 	mu.Lock()
 	defer mu.Unlock()
-	order := Order{}
-	order.ID = generateID()
-	order.CustomerID = cust.ID
+	orderDetails.ID = len(readOrders()) + 1
 
 	fmt.Println("Order request received.")
 
 	orders := readOrders()
 	orders = append(orders, *orderDetails)
 
-	jsonCustomers, err := json.Marshal(orders)
+	jsonOrders, err := json.Marshal(orders)
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile("data/orders.json", jsonCustomers, 0644)
+	err = ioutil.WriteFile("data/orders.json", jsonOrders, 0644)
 
 	if err != nil {
 		return err
+	}
+
+	file, _ := ioutil.ReadFile("data/orders.json")
+
+	ords := getCurrentOrders(2, file)
+	for _, ord := range ords {
+		fmt.Println(ord.Date)
 	}
 
 	*response = fmt.Sprintf("Order successfully! Your Order ID is %d", orderDetails.ID)
@@ -141,6 +155,11 @@ func (cust *Customer) MakeOrder(orderDetails *Order, response *string) error {
 	return nil
 
 }
+
+/*GetProjections will provide 6 month availability to client*/
+// func (*Customer) GetProjections(product *Product, response *string) {
+
+// }
 
 /*				Unexported Helper functions				*/
 
@@ -185,6 +204,54 @@ func readProducts() []Product {
 	_ = json.Unmarshal([]byte(file), &data)
 
 	return data
+}
+
+//getCurrentStock takes in a product ID and returns the current level of stock
+func getCurrentStock(id int) int {
+	file, _ := ioutil.ReadFile("data/products.json")
+	data := []Product{}
+	_ = json.Unmarshal([]byte(file), &data)
+
+	return 0
+
+}
+
+//getCurrentOrders takes in a product ID and returns the current orders for that product
+func getCurrentOrders(id int, file []byte) []Order {
+
+	data := []Order{}
+	newData := []Order{}
+	_ = json.Unmarshal([]byte(file), &data)
+
+	//remove orders for other products
+	for _, ord := range data {
+		if ord.ProductID == id {
+			newData = append(newData, ord)
+		}
+	}
+	sort.Slice(newData, func(i, j int) bool {
+
+		iStamp, err := strconv.Atoi(fmt.Sprintf("%s%s%s", newData[i].Date.Y, newData[i].Date.M, newData[i].Date.D))
+		jStamp, err := strconv.Atoi(fmt.Sprintf("%s%s%s", newData[j].Date.Y, newData[j].Date.M, newData[j].Date.D))
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		return iStamp < jStamp
+	})
+
+	return newData
+}
+
+//getCurrentRestock takes in a product ID and returns the day of the month that that product is restocked
+func getCurrentRestock(id int) int {
+	return 0
+}
+
+//helper function for removing slice element
+func remove(orderSlice []Order, index int) []Order {
+	return append(orderSlice[:index], orderSlice[index+1:]...)
 }
 
 /*							Main 							*/
