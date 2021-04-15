@@ -18,6 +18,8 @@ func main() {
 		reply          string
 		customer       structs.Customer
 		cmds           string
+		products       []structs.Product
+		availability   []string
 	)
 
 	client, err := rpc.DialHTTP("tcp", "localhost:1234")
@@ -71,7 +73,48 @@ func main() {
 
 			placeOrder(client, customer, order, reply)
 
+		case "listproducts":
+			listProducts(client, customer, &products)
+
+		case "listorders":
+			listOrders(client, customer, &availability)
+
+		case "cancelorder":
+			cancelOrder(client, customer, reply)
+
+		case "showavailability":
+			var withDate string
+			stockReq := structs.StockRequest{}
+			var requestedDate string
+
+			fmt.Print("\n>>Would you like to know availability for a specific date (y/n)")
+			fmt.Scanf("%s", &withDate)
+			if withDate == "y" {
+				fmt.Print("\n>> Please enter the product ID: ")
+				fmt.Scanf("%d", &stockReq.ProductID)
+
+				fmt.Print("\n>> Please enter the date that you would like to check availability for (Note strict formatting) dd/mm/yyyy: ")
+				fmt.Scanf("%s", &requestedDate)
+
+				tmpDate := strings.Split(requestedDate, "/")
+
+				date := structs.Date{
+					D: tmpDate[0],
+					M: tmpDate[1],
+					Y: tmpDate[2],
+				}
+
+				stockReq.Date = date
+
+				showAvailabilityWithDate(client, stockReq, &reply)
+			} else {
+				fmt.Print("\n>> Please enter the product ID: ")
+				fmt.Scanf("%d", &stockReq.ProductID)
+
+				showAvailabilityWithoutDate(client, stockReq.ProductID, &availability)
+			}
 		}
+
 	}
 
 }
@@ -163,6 +206,59 @@ func placeOrder(client *rpc.Client, customer structs.Customer, order structs.Ord
 	//extract order id
 	orderID, err := strconv.Atoi(strings.Fields(reply)[len(strings.Fields(reply))-1])
 	order.ID = orderID
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func listProducts(client *rpc.Client, customer structs.Customer, reply *[]structs.Product) {
+	err := client.Call("Customer.ListProducts", customer, reply)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("ID             Name                Quantity")
+	for _, prod := range *reply {
+		fmt.Printf("%d %s %s %s %d\n", prod.ID, strings.Repeat(" ", 10), prod.Name, strings.Repeat(" ", 20-len(prod.Name)), prod.Quantity)
+	}
+
+}
+
+func listOrders(client *rpc.Client, customer structs.Customer, availability *[]string) {
+	err := client.Call("Customer.ListOrders", customer.ID, &availability)
+	fmt.Println(*availability)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func cancelOrder(client *rpc.Client, customer structs.Customer, reply string) {
+	var id int
+	fmt.Print("Please enter the ID of the order that you would like to cancel: ")
+	fmt.Scanf("%d", &id)
+
+	err := client.Call("Customer.CancelOrder", id, &reply)
+	fmt.Println(reply)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+}
+
+func showAvailabilityWithDate(client *rpc.Client, stockReq structs.StockRequest, reply *string) {
+	err := client.Call("Customer.GetProjectionFromDate", stockReq, &reply)
+	fmt.Println(*reply)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func showAvailabilityWithoutDate(client *rpc.Client, id int, availability *[]string) {
+	err := client.Call("Customer.GetProjections", 2, &availability)
+	fmt.Println(*availability)
 
 	if err != nil {
 		fmt.Println(err)
