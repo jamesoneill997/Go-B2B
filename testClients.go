@@ -51,16 +51,16 @@ func runClient(custs <-chan structs.Customer, results chan<- string) {
 		orderID, err := strconv.Atoi(strings.Fields(reply)[len(strings.Fields(reply))-1])
 		order.ID = orderID
 
+		err = client.Call("Customer.GetProjections", 2, &availability)
+		fmt.Println(availability)
+
 		err = client.Call("Customer.ListOrders", cust.ID, &availability)
 		fmt.Println(availability)
 
-		err = client.Call("Customer.CancelOrder", orderID, &reply)
-		fmt.Println(reply)
+		// err = client.Call("Customer.CancelOrder", orderID, &reply)
+		// fmt.Println(reply)
 
-		err = client.Call("Customer.ListOrders", cust.ID, &availability)
-		fmt.Println(availability)
-
-		// err = client.Call("Customer.GetProjections", 2, &availability)
+		// err = client.Call("Customer.ListOrders", cust.ID, &availability)
 		// fmt.Println(availability)
 
 		if err != nil {

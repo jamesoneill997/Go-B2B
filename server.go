@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+
+	"github.com/jamesoneill997/Go-B2B/structs"
 )
 
 //Customer struct stores customer info
@@ -96,10 +98,6 @@ func (cust *Customer) ListProducts(customerDetails *Customer, response *[]Produc
 	return nil
 }
 
-// func prettifyProduct(json []byte) string {
-
-// }
-
 /*Login takes customer login details and returns whether login has been successful*/
 func (cust *Customer) Login(customerDetails *Customer, response *string) error {
 	registeredCustomers := readCustomers()
@@ -156,24 +154,38 @@ func (*Customer) GetProjections(id int, response *[]string) error {
 	file, _ := ioutil.ReadFile("data/orders.json")
 	ords := getCurrentOrders(id, file)
 	availability := []string{}
+	restocks := []structs.Date{}
 	currStock := getCurrentStock(id)
 
 	restockDay, restockQuantity := getCurrentRestock(id)
 
-	for _, ord := range ords {
-		day, _ := strconv.Atoi(ord.Date.D)
-		restockTotal, _ := strconv.Atoi(ord.Date.D)
-		restockTotal -= 4 //april
-		totalRestock := restockTotal * restockQuantity
-
-		if restockDay < day {
-			totalRestock -= restockQuantity
-			currStock = currStock - ord.Quantity + totalRestock
-		} else {
-			currStock = currStock - ord.Quantity + totalRestock
+	for i := 4; i <= 10; i++ {
+		restockDate := structs.Date{
+			D: strconv.Itoa(restockDay),
+			M: strconv.Itoa(i),
+			Y: "2021",
 		}
 
-		availability = append(availability, fmt.Sprintf("\n %s Stock Level: %d\n", ord.Date, currStock))
+		restocks = append(restocks, restockDate)
+	}
+
+	for _, ord := range ords {
+		day, _ := strconv.Atoi(ord.Date.D)
+		month, _ := strconv.Atoi(ord.Date.M)
+
+		if month <= 10 {
+			month -= 4 //april
+			totalRestock := month * restockQuantity
+
+			if restockDay < day {
+				totalRestock -= restockQuantity
+				currStock = currStock - ord.Quantity + totalRestock
+			} else {
+				currStock = currStock - ord.Quantity + totalRestock
+			}
+
+			availability = append(availability, fmt.Sprintf("\n Order on: %s Stock Level: %d\n", ord.Date, currStock))
+		}
 	}
 
 	*response = availability
@@ -233,7 +245,11 @@ func (*Customer) CancelOrder(orderID int, response *string) error {
 	return errors.New("Order not found")
 }
 
-/*				Unexported Helper functions				*/
+/*
+
+   UNEXPORTED HELPER FUNCTIONS
+
+*/
 
 //checks a users password
 func checkPassword(enteredPassword string, correctPassword string) error {
