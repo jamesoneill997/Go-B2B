@@ -16,6 +16,7 @@ func runClient(custs <-chan structs.Customer, results chan<- string) {
 	var (
 		reply        string
 		availability []string
+		stockRequest structs.StockRequest
 		// products []structs.Product
 		// commands = []string{"ListProducts"}
 	)
@@ -62,6 +63,11 @@ func runClient(custs <-chan structs.Customer, results chan<- string) {
 
 		// err = client.Call("Customer.ListOrders", cust.ID, &availability)
 		// fmt.Println(availability)
+
+		stockRequest.ProductID = 2
+		stockRequest.Date = structs.Date{D: "10", M: "09", Y: "2021"}
+		err = client.Call("Customer.GetProjectionFromDate", stockRequest, &reply)
+		fmt.Println(reply)
 
 		if err != nil {
 			fmt.Println(err)

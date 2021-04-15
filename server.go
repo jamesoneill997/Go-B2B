@@ -11,6 +11,7 @@ import (
 	"net/rpc"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/jamesoneill997/Go-B2B/structs"
@@ -49,6 +50,11 @@ type Date struct {
 
 type Response struct {
 	Message string
+}
+
+type StockRequest struct {
+	Date      Date
+	ProductID int
 }
 
 var mu sync.Mutex
@@ -151,46 +157,38 @@ func (cust *Customer) MakeOrder(orderDetails *Order, response *string) error {
 func (*Customer) GetProjections(id int, response *[]string) error {
 	mu.Lock()
 	defer mu.Unlock()
-	file, _ := ioutil.ReadFile("data/orders.json")
-	ords := getCurrentOrders(id, file)
-	availability := []string{}
-	restocks := []structs.Date{}
-	currStock := getCurrentStock(id)
 
-	restockDay, restockQuantity := getCurrentRestock(id)
-
-	for i := 4; i <= 10; i++ {
-		restockDate := structs.Date{
-			D: strconv.Itoa(restockDay),
-			M: strconv.Itoa(i),
-			Y: "2021",
-		}
-
-		restocks = append(restocks, restockDate)
-	}
-
-	for _, ord := range ords {
-		day, _ := strconv.Atoi(ord.Date.D)
-		month, _ := strconv.Atoi(ord.Date.M)
-
-		if month <= 10 {
-			month -= 4 //april
-			totalRestock := month * restockQuantity
-
-			if restockDay < day {
-				totalRestock -= restockQuantity
-				currStock = currStock - ord.Quantity + totalRestock
-			} else {
-				currStock = currStock - ord.Quantity + totalRestock
-			}
-
-			availability = append(availability, fmt.Sprintf("\n Order on: %s Stock Level: %d\n", ord.Date, currStock))
-		}
-	}
+	availability := projectionFetcher(id)
 
 	*response = availability
 
 	return nil
+
+}
+
+/*GetProjectionFromDate takes in a product and a date and returns the availability of that product on that date*/
+func (*Customer) GetProjectionFromDate(query StockRequest, response *string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	availability := projectionFetcher(query.ProductID)
+	for _, a := range availability {
+		s := strings.Split(a, ":")
+		d, quantity := strings.Trim(s[0], "{"), strings.Trim(s[1], " ")
+		d = strings.Trim(d, "}")
+
+		date := strings.Split(d, " ")
+
+		thisDate := Date{date[0], date[1], date[2]}
+
+		if query.Date.M == thisDate.M {
+			*response = fmt.Sprintf("The projected quantity for %v is %s", date, quantity)
+			return nil
+		}
+	}
+
+	*response = "Projection not available"
+	return errors.New("Projection not available")
 
 }
 
@@ -250,6 +248,69 @@ func (*Customer) CancelOrder(orderID int, response *string) error {
    UNEXPORTED HELPER FUNCTIONS
 
 */
+
+func checkOrders(month int, ords []Order) []Order {
+	ordersThisMonth := []Order{}
+
+	for _, ord := range ords {
+		intMonth, _ := strconv.Atoi(ord.Date.M)
+
+		if intMonth == month {
+			ordersThisMonth = append(ordersThisMonth, ord)
+		}
+	}
+
+	return ordersThisMonth
+}
+
+func projectionFetcher(id int) []string {
+	file, _ := ioutil.ReadFile("data/orders.json")
+	ords := getCurrentOrders(id, file)
+	availability := []string{}
+	restocks := []structs.Date{}
+	currStock := getCurrentStock(id)
+
+	restockDay, restockQuantity := getCurrentRestock(id)
+
+	for i := 4; i <= 10; i++ {
+		restockDate := structs.Date{
+			D: strconv.Itoa(restockDay),
+			M: fmt.Sprintf("0%d", i),
+			Y: "2021",
+		}
+
+		restocks = append(restocks, restockDate)
+	}
+	for i := 4; i <= 10; i++ {
+
+		ordersThisMonth := checkOrders(i, ords)
+
+		if len(ordersThisMonth) == 0 {
+			currStock += restockQuantity
+			availability = append(availability, fmt.Sprintf("\n%s: %d", restocks[i-4], currStock))
+		} else {
+
+			for _, order := range ordersThisMonth {
+
+				if order.Date.D < strconv.Itoa(restockDay) {
+					currStock -= order.Quantity
+					availability = append(availability, fmt.Sprintf("\n%s: %d", order.Date, currStock))
+				} else {
+					restockDate := structs.Date{
+						D: strconv.Itoa(restockDay),
+						M: strconv.Itoa(i + 3),
+						Y: "2021",
+					}
+
+					currStock += restockQuantity - order.Quantity
+					availability = append(availability, fmt.Sprintf("\n%s: %d", restockDate, currStock))
+				}
+			}
+		}
+	}
+
+	return availability
+}
 
 //checks a users password
 func checkPassword(enteredPassword string, correctPassword string) error {

@@ -29,3 +29,9 @@ type Date struct {
 	M string `json: m`
 	Y string `json: y`
 }
+
+//StockRequest is used to store data used to query for stock availability
+type StockRequest struct {
+	Date      Date
+	ProductID int
+}
