@@ -107,7 +107,7 @@ func dateGenerator() structs.Date {
 
 func main() {
 	maxRoutines := 15
-	numJobs := 10
+	numJobs := 400
 	jobs := make(chan structs.Customer, numJobs)
 	results := make(chan string, numJobs)
 

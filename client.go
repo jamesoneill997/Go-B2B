@@ -4,18 +4,20 @@ import (
 	"fmt"
 	"log"
 	"net/rpc"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/jamesoneill997/Go-B2B/structs"
-	"github.com/urfave/cli"
 )
 
 func main() {
+
 	var (
 		userHasAccount string
 		reply          string
 		customer       structs.Customer
-		cmd            string
-		cmdArr         []string
+		cmds           string
 	)
 
 	client, err := rpc.DialHTTP("tcp", "localhost:1234")
@@ -23,6 +25,100 @@ func main() {
 		log.Fatal("dialing: ", err)
 	}
 
+	login(client, userHasAccount, customer, reply)
+	customer.ID, _ = strconv.Atoi(strings.Split(reply, " ")[len(reply)])
+
+	fmt.Println("Welcome to go-B2B, type 'help' for a full list of commands")
+
+	for {
+		fmt.Print(">> ")
+		fmt.Scanf("%v", &cmds)
+		commands := strings.Split(cmds, " ")
+
+		switch commands[0] {
+		case "help":
+			printHelp()
+		case "login":
+			login(client, userHasAccount, customer, reply)
+		case "logout":
+			logout()
+		case "placeorder":
+			var productID int
+			var quantity int
+			var requestedDate string
+
+			fmt.Print("\n>> Please enter the product ID: ")
+			fmt.Scanf("%d", &productID)
+			fmt.Print("\n>> Please enter the quantity that you would like to order: ")
+			fmt.Scanf("%d", &quantity)
+			fmt.Print("\n>> Please enter the date that you would like to place the order for (Note strict formatting) dd/mm/yyyy: ")
+			fmt.Scanf("%s", &requestedDate)
+
+			tmpDate := strings.Split(requestedDate, "/")
+
+			date := structs.Date{
+				D: tmpDate[0],
+				M: tmpDate[1],
+				Y: tmpDate[2],
+			}
+
+			order := structs.Order{
+				ProductID:  productID,
+				CustomerID: customer.ID,
+				Quantity:   quantity,
+				Date:       date,
+			}
+
+			placeOrder(client, customer, order, reply)
+
+		}
+	}
+
+}
+
+func printHelp() {
+	validCommands := []structs.Command{
+		{
+			Name:        "help",
+			Description: "Print a list of all commands and their usage",
+		},
+		{
+			Name:        "login",
+			Description: "Login as a user, this command will prompt you for ID and password",
+		},
+		{
+			Name:        "logout",
+			Description: "End current session",
+		},
+		{
+			Name:        "placeorder",
+			Description: "Places an order takes 3 parameters, productID, quantity and date",
+		},
+		{
+			Name:        "listproducts",
+			Description: "Print a list of all available products",
+		},
+		{
+			Name:        "listorders",
+			Description: "Print a list of all of your orders",
+		},
+		{
+			Name:        "cancelorder",
+			Description: "Cancel an order by ID",
+		},
+		{
+			Name:        "showavailability",
+			Description: "Print a list of availability for a given product, optional parameter Date will show availability on that date. No parameter will show availability for next 6 months",
+		},
+	}
+	fmt.Println("go-B2B Assistance. Please see list of valid commands below")
+	fmt.Println("Command                                                 Description")
+	for _, cmd := range validCommands {
+		fmt.Printf("%s%s%s\n", cmd.Name, strings.Repeat(" ", 40-len(cmd.Name)), cmd.Description)
+	}
+}
+
+func login(client *rpc.Client, userHasAccount string, customer structs.Customer, reply string) {
 	fmt.Print("Welcome to B2B-CLI, Do you already have an account? (y/n): ")
 	fmt.Scanf("%s", &userHasAccount)
 
@@ -45,100 +141,30 @@ func main() {
 		fmt.Print("Please enter the password that you would like to use: ")
 		fmt.Scanf("%s", &customer.Password)
 
-		err = client.Call("Customer.CreateCustomer", customer, &reply)
-	}
+		err := client.Call("Customer.CreateCustomer", customer, &reply)
+		fmt.Println(reply)
 
-	fmt.Println(reply)
-	app := cli.NewApp()
-	app.Name = "B2B-CLI"
-	app.Usage = "A B2B ordering system created in Go!"
-
-	orderFlags := []cli.Flag{
-		cli.StringFlag{
-			Name:  "product",
-			Usage: "Specify desired Product",
-		},
-		cli.StringFlag{
-			Name:  "date",
-			Usage: "Specify date of order (format = dd/mm/yyyy)",
-		},
-		cli.StringFlag{
-			Name:  "time",
-			Usage: "Specify time of order (24hr format = 14:30)",
-		},
-	}
-
-	credFlags := []cli.Flag{
-		cli.StringFlag{
-			Name:  "id",
-			Usage: "Customer ID",
-		},
-		cli.StringFlag{
-			Name:  "password",
-			Usage: "Customer password",
-		},
-	}
-
-	app.Commands = []cli.Command{
-		{
-			Name:  "logout",
-			Usage: "Ends current session",
-			Action: func(c *cli.Context) error {
-				log.Fatal("Goodbye!")
-				return err
-			},
-		},
-
-		{
-			Name:  "login",
-			Usage: "Prompts user login.",
-			Flags: credFlags,
-		},
-		{
-			Name:  "order",
-			Usage: "Order a specified product",
-			Flags: orderFlags,
-		},
-		{
-			Name:  "listproducts",
-			Usage: "List all available products",
-			Action: func(c *cli.Context) error {
-				err := client.Call("Customer.ListProducts", customer, &reply)
-				fmt.Println(&reply)
-				return err
-			},
-		},
-		{
-			Name:  "availability",
-			Usage: "List all availability, optional flags allow product and date specification",
-			Flags: orderFlags,
-		},
-		{
-			Name:  "listorders",
-			Usage: "List all orders for current user",
-		},
-		{
-			Name:  "cancelorder",
-			Usage: "Cancel order given an ID, run without flags will cancel all orders for current user",
-			Flags: orderFlags,
-		},
-	}
-
-	if err != nil {
-		log.Fatal("Error:", err)
-	}
-
-	//CLI
-	app.Run([]string{"help"})
-
-	for {
-		fmt.Print(">> ")
-		fmt.Scanf("%s", &cmd)
-		cmdArr = append(cmdArr, cmd)
-		err := app.Run(cmdArr)
 		if err != nil {
 			log.Fatal(err)
 		}
-	}
 
+	}
+}
+
+func logout() {
+	fmt.Println("Thank you for shopping with go-B2B, see you again soon!")
+	os.Exit(1)
+}
+
+func placeOrder(client *rpc.Client, customer structs.Customer, order structs.Order, reply string) {
+	err := client.Call("Customer.MakeOrder", order, &reply)
+	fmt.Println(reply)
+
+	//extract order id
+	orderID, err := strconv.Atoi(strings.Fields(reply)[len(strings.Fields(reply))-1])
+	order.ID = orderID
+
+	if err != nil {
+		fmt.Println(err)
+	}
 }

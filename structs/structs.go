@@ -35,3 +35,10 @@ type StockRequest struct {
 	Date      Date
 	ProductID int
 }
+
+//Command type used for storing commands from CLI
+type Command struct {
+	Name        string
+	Args        string
+	Description string
+}
