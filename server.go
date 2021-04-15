@@ -143,13 +143,6 @@ func (cust *Customer) MakeOrder(orderDetails *Order, response *string) error {
 		return err
 	}
 
-	file, _ := ioutil.ReadFile("data/orders.json")
-
-	ords := getCurrentOrders(2, file)
-	for _, ord := range ords {
-		fmt.Println(ord.Date)
-	}
-
 	*response = fmt.Sprintf("Order successfully! Your Order ID is %d", orderDetails.ID)
 	fmt.Printf("Order %d created successfully\n", orderDetails.ID)
 	return nil
@@ -157,9 +150,88 @@ func (cust *Customer) MakeOrder(orderDetails *Order, response *string) error {
 }
 
 /*GetProjections will provide 6 month availability to client*/
-// func (*Customer) GetProjections(product *Product, response *string) {
+func (*Customer) GetProjections(id int, response *[]string) error {
+	mu.Lock()
+	defer mu.Unlock()
+	file, _ := ioutil.ReadFile("data/orders.json")
+	ords := getCurrentOrders(id, file)
+	availability := []string{}
+	currStock := getCurrentStock(id)
 
-// }
+	restockDay, restockQuantity := getCurrentRestock(id)
+
+	for _, ord := range ords {
+		day, _ := strconv.Atoi(ord.Date.D)
+		restockTotal, _ := strconv.Atoi(ord.Date.D)
+		restockTotal -= 4 //april
+		totalRestock := restockTotal * restockQuantity
+
+		if restockDay < day {
+			totalRestock -= restockQuantity
+			currStock = currStock - ord.Quantity + totalRestock
+		} else {
+			currStock = currStock - ord.Quantity + totalRestock
+		}
+
+		availability = append(availability, fmt.Sprintf("\n %s Stock Level: %d\n", ord.Date, currStock))
+	}
+
+	*response = availability
+
+	return nil
+
+}
+
+/*ListOrders function will list all orders made by the specified customer*/
+func (*Customer) ListOrders(custID int, response *[]string) error {
+	mu.Lock()
+	defer mu.Unlock()
+	ords := readOrders()
+	custOrders := []Order{}
+	strOrders := []string{}
+
+	for _, ord := range ords {
+		if ord.CustomerID == custID {
+			custOrders = append(custOrders, ord)
+			strOrders = append(strOrders, fmt.Sprintf("\n Order ID: %d \n Product ID: %d \n Product Name: %s \n Quantity: %d \n Date: %v\n", ord.ID, ord.ProductID, getProductName(ord.ProductID), ord.Quantity, ord.Date))
+		}
+	}
+
+	*response = strOrders
+
+	return nil
+
+}
+
+/*CancelOrder takes in an order ID and deletes that order.*/
+func (*Customer) CancelOrder(orderID int, response *string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	orders := readOrders()
+
+	for i, ord := range orders {
+		if ord.ID == orderID {
+			orders = remove(orders, i)
+			jsonOrders, err := json.Marshal(orders)
+			if err != nil {
+				return err
+			}
+
+			err = ioutil.WriteFile("data/orders.json", jsonOrders, 0644)
+
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Order %d has been cancelled", orderID)
+			*response = "Successfully cancelled order"
+			return nil
+		}
+	}
+
+	*response = "Order not found"
+	return errors.New("Order not found")
+}
 
 /*				Unexported Helper functions				*/
 
@@ -169,6 +241,21 @@ func checkPassword(enteredPassword string, correctPassword string) error {
 		return nil
 	}
 	return errors.New("Invalid credentials")
+}
+
+//get product name given ID
+func getProductName(id int) string {
+	file, _ := ioutil.ReadFile("data/products.json")
+	data := []Product{}
+	_ = json.Unmarshal([]byte(file), &data)
+
+	for _, prod := range data {
+		if prod.ID == id {
+			return prod.Name
+		}
+	}
+
+	return "Product name not found"
 }
 
 /*generates unique ID for user*/
@@ -188,7 +275,6 @@ func readCustomers() []Customer {
 
 //gets list of all current orders
 func readOrders() []Order {
-
 	file, _ := ioutil.ReadFile("data/orders.json")
 	data := []Order{}
 	_ = json.Unmarshal([]byte(file), &data)
@@ -198,7 +284,6 @@ func readOrders() []Order {
 
 //gets list of all current products
 func readProducts() []Product {
-
 	file, _ := ioutil.ReadFile("data/products.json")
 	data := []Product{}
 	_ = json.Unmarshal([]byte(file), &data)
@@ -211,6 +296,12 @@ func getCurrentStock(id int) int {
 	file, _ := ioutil.ReadFile("data/products.json")
 	data := []Product{}
 	_ = json.Unmarshal([]byte(file), &data)
+
+	for _, prod := range data {
+		if prod.ID == id {
+			return prod.Quantity
+		}
+	}
 
 	return 0
 
@@ -244,9 +335,20 @@ func getCurrentOrders(id int, file []byte) []Order {
 	return newData
 }
 
-//getCurrentRestock takes in a product ID and returns the day of the month that that product is restocked
-func getCurrentRestock(id int) int {
-	return 0
+//getCurrentRestock takes in a product ID and returns (restock date, restock quantity)
+func getCurrentRestock(id int) (int, int) {
+	file, _ := ioutil.ReadFile("data/products.json")
+	data := []Product{}
+	_ = json.Unmarshal([]byte(file), &data)
+
+	for _, p := range data {
+		if id == p.ID {
+			return p.RestockDate, p.RestockQuantity
+		}
+	}
+
+	//no product found, assume that there is no restock
+	return 0, 0
 }
 
 //helper function for removing slice element

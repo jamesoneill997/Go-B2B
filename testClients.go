@@ -14,7 +14,8 @@ import (
 
 func runClient(custs <-chan structs.Customer, results chan<- string) {
 	var (
-		reply string
+		reply        string
+		availability []string
 		// products []structs.Product
 		// commands = []string{"ListProducts"}
 	)
@@ -38,13 +39,29 @@ func runClient(custs <-chan structs.Customer, results chan<- string) {
 
 		order := structs.Order{
 			ProductID:  numberGenerator(1, 4),
-			Quantity:   numberGenerator(1, 3),
+			Quantity:   numberGenerator(1, 150),
 			CustomerID: cust.ID,
 			Date:       dateGenerator(),
 		}
 
 		err = client.Call("Customer.MakeOrder", order, &reply)
 		fmt.Println(reply)
+
+		//extract order id
+		orderID, err := strconv.Atoi(strings.Fields(reply)[len(strings.Fields(reply))-1])
+		order.ID = orderID
+
+		err = client.Call("Customer.ListOrders", cust.ID, &availability)
+		fmt.Println(availability)
+
+		err = client.Call("Customer.CancelOrder", orderID, &reply)
+		fmt.Println(reply)
+
+		err = client.Call("Customer.ListOrders", cust.ID, &availability)
+		fmt.Println(availability)
+
+		// err = client.Call("Customer.GetProjections", 2, &availability)
+		// fmt.Println(availability)
 
 		if err != nil {
 			fmt.Println(err)
